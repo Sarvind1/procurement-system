@@ -12,6 +12,30 @@ The system is built using a modern, scalable architecture with the following com
 - **Migrations**: Alembic, a database migration tool for SQLAlchemy. It is used to manage database schema changes, ensuring that the database structure evolves with the application.
 - **Session Management**: Async SQLAlchemy for efficient database interactions. This allows for non-blocking database operations, improving the performance of the application.
 
+## Project Structure
+- **Backend**:
+  - **FastAPI**: The main application framework.
+  - **Models**: Contains models for users, products, inventory, suppliers, purchase orders, and shipments.
+  - **API Endpoints**: Includes endpoints for authentication, products, inventory, suppliers, purchase orders, and shipments.
+  - **Database**: Uses PostgreSQL with Alembic for migrations.
+  - **Session Management**: Async SQLAlchemy for efficient database interactions.
+
+### Key Files
+- **`backend/app/main.py`**: The entry point for the FastAPI application.
+- **`backend/app/models/`**: Contains SQLAlchemy models for the database.
+- **`backend/app/api/v1/endpoints/`**: Contains API endpoint definitions.
+- **`backend/alembic/`**: Contains migration scripts and configuration.
+- **`backend/app/db/session.py`**: Manages database sessions.
+- **`backend/app/core/`**: Contains core configurations and utilities.
+- **`backend/app/schemas/`**: Contains Pydantic schemas for request/response validation.
+
+### Additional Files
+- **`docker-compose.yml`**: Configuration for Docker services.
+- **`Makefile`**: Contains commands for building and running the project.
+- **`README.md`**: Provides an overview of the project and setup instructions.
+- **`CONTRIBUTING.md`**: Guidelines for contributing to the project.
+- **`LICENSE`**: The project's license information.
+
 ## Design Decisions
 
 ### 1. FastAPI
@@ -60,6 +84,89 @@ As the project evolves, the following areas will be considered for future develo
 | 8    | Pydantic Schemas | Defined Pydantic schemas for request/response validation. |
 | 9    | Project Brain Documentation | Created a project brain document (`project_brain.md`) to document the thought process and technical details of the project. |
 | 10   | Future Development | Outlined future development plans, including frontend development, CI/CD integration, and scalability enhancements. |
+
+## Remaining Backend Files to Add
+
+### 1. Schemas (Pydantic models for API serialization)
+- **`backend/app/schemas/auth.py`**: Authentication schemas.
+- **`backend/app/schemas/purchase_order.py`**: Purchase order schemas.
+- **`backend/app/schemas/inventory.py`**: Inventory schemas.
+- **`backend/app/schemas/supplier.py`**: Supplier schemas.
+- **`backend/app/schemas/shipment.py`**: Shipment schemas.
+
+### 2. Services (Business logic layer)
+- **`backend/app/services/__init__.py`**: Services init file.
+- **`backend/app/services/product.py`**: Product business logic.
+- **`backend/app/services/purchase_order.py`**: Purchase order business logic.
+- **`backend/app/services/inventory.py`**: Inventory business logic.
+- **`backend/app/services/supplier.py`**: Supplier business logic.
+- **`backend/app/services/shipment.py`**: Shipment business logic.
+- **`backend/app/services/auth.py`**: Authentication business logic.
+
+### 3. Update API Router
+- Update **`backend/app/api/v1/api.py`** to include all new endpoint routers.
+
+### 4. Add Missing Core Files
+- **`backend/app/core/database.py`**: Database connection and session management.
+- **`backend/app/core/logging.py`**: Logging configuration.
+- **`backend/app/core/celery.py`**: Celery configuration for background tasks.
+
+### 5. Database Migrations
+- Create Alembic migration files for all models.
+- Add seed data for initial setup.
+
+## Frontend Development (Complete React App)
+
+### 1. Project Structure
+```
+frontend/src/
+├── components/          # Reusable UI components
+├── pages/              # Main application pages
+├── hooks/              # Custom React hooks
+├── services/           # API service calls
+├── store/              # Zustand state management
+├── types/              # TypeScript type definitions
+├── utils/              # Utility functions
+└── main.tsx           # Application entry point
+```
+
+### 2. Key Frontend Files to Create
+- Main app setup (`App.tsx`, `main.tsx`, `index.html`)
+- Authentication pages (Login, Register)
+- Dashboard with analytics
+- Product management (List, Create, Edit)
+- Purchase Order management
+- Inventory management
+- Supplier management
+- Shipment tracking
+- Navigation and layout components
+
+### 3. Configuration Files
+- **`frontend/vite.config.ts`**: Vite configuration.
+- **`frontend/tailwind.config.js`**: Tailwind CSS configuration.
+- **`frontend/tsconfig.json`**: TypeScript configuration.
+
+## Additional Infrastructure
+
+### 1. Database Initialization
+- **`scripts/init-db.sql`**: Database initialization script.
+- Seed data for categories, locations, sample products.
+
+### 2. Docker Configuration Updates
+- Ensure all services are properly configured.
+- Add environment variables for development.
+
+### 3. Documentation
+- Update `README.md` with complete setup instructions.
+- API documentation improvements.
+
+## Priority Order
+1. Backend Schemas (needed for API endpoints to work)
+2. Backend Services (business logic implementation)
+3. Core Infrastructure (database, logging, celery)
+4. Database Migrations (to create actual database tables)
+5. Frontend Application (user interface)
+6. Seed Data (sample data for demo)
 
 ## Conclusion
 The Procurement Management System is designed with scalability, security, and performance in mind. By leveraging modern technologies and best practices, it provides a robust foundation for managing procurement processes efficiently. This document serves as a guide to understanding the development choices and future directions of the project. 
