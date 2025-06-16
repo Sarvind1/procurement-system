@@ -1,3 +1,5 @@
+"""Database session management with proper configuration."""
+
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -8,12 +10,12 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
-# Create async engine
+# Create async engine using the correct configuration
 engine = create_async_engine(
-    settings.SQLALCHEMY_DATABASE_URI,
-    pool_pre_ping=True,
-    echo=settings.SQL_ECHO,
-    future=True
+    settings.get_database_url(),
+    echo=settings.DEBUG,  # Use DEBUG instead of SQL_ECHO
+    future=True,
+    **settings.database_config
 )
 
 # Create async session factory
@@ -25,9 +27,16 @@ async_session_factory = async_sessionmaker(
     autoflush=False
 )
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency for getting async database sessions.
+    
+    This function provides database sessions for FastAPI dependency injection.
+    It ensures proper session lifecycle management with automatic commit/rollback.
+    
+    Yields:
+        AsyncSession: Database session for use in API endpoints
     """
     async with async_session_factory() as session:
         try:
@@ -37,4 +46,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
         finally:
-            await session.close() 
+            await session.close()
