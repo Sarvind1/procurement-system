@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS: Union[List[str], str] = ["localhost", "127.0.0.1"]
     
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -63,6 +63,17 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+    
+    @field_validator("ALLOWED_HOSTS", mode="before")
+    @classmethod
+    def assemble_allowed_hosts(cls, v: Union[str, List[str]]) -> List[str]:
+        """Parse allowed hosts."""
+        if isinstance(v, str):
+            # Handle comma-separated string
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, list):
+            return v
+        return ["localhost", "127.0.0.1"]
     
     @field_validator("SECRET_KEY", mode="before")
     @classmethod
@@ -128,15 +139,19 @@ class Settings(BaseSettings):
         """Initialize settings with helpful error messages."""
         try:
             super().__init__(**values)
+            print(f"✅ Configuration loaded successfully")
+            print(f"   Environment: {self.ENVIRONMENT}")
+            print(f"   Debug: {self.DEBUG}")
+            print(f"   CORS Origins: {self.BACKEND_CORS_ORIGINS}")
+            print(f"   Allowed Hosts: {self.ALLOWED_HOSTS}")
         except Exception as e:
             print("\n❌ Configuration Error!")
             print("=" * 50)
-            print("Missing required environment variables.")
+            print(f"Error: {str(e)}")
             print("\nTo fix this:")
-            print("1. Copy the example environment file:")
-            print("   cp .env.example .env")
-            print("\n2. Edit .env and update the values")
-            print("\n3. Make sure you're in the backend directory")
+            print("1. Check your .env file format")
+            print("2. Ensure BACKEND_CORS_ORIGINS is a JSON array or comma-separated")
+            print("3. Ensure ALLOWED_HOSTS is comma-separated")
             print("=" * 50)
             raise e
 
