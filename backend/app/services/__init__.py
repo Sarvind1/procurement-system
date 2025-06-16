@@ -1,15 +1,9 @@
-from .auth import AuthService
-from .product import ProductService
-from .purchase_order import PurchaseOrderService
-from .inventory import InventoryService
-from .supplier import SupplierService
-from .shipment import ShipmentService
+"""Services package with all business logic implementations."""
+
+from app.services.user import UserService
+from app.services.category import CategoryService
 
 __all__ = [
-    "AuthService",
-    "ProductService",
-    "PurchaseOrderService",
-    "InventoryService",
-    "SupplierService",
-    "ShipmentService",
-] 
+    "UserService",
+    "CategoryService",
+]
