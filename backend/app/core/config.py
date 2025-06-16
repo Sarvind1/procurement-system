@@ -1,18 +1,21 @@
 """Application configuration settings."""
 
+import secrets
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, field_validator
+from pydantic import AnyHttpUrl, EmailStr, PostgresDsn, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings."""
+    """Application settings with development-friendly defaults."""
     
     model_config = SettingsConfigDict(
         env_file=".env",
         env_ignore_empty=True,
-        extra="ignore"
+        extra="ignore",
+        # Automatically look for .env file in parent directories
+        env_file_encoding='utf-8'
     )
     
     # Application
@@ -22,15 +25,27 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
-    # Security
-    SECRET_KEY: str
+    # Security - Generate a default for development if not provided
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # Database
-    DATABASE_URL: PostgresDsn
+    # Database - Provide development default
+    DATABASE_URL: Optional[PostgresDsn] = None
     DATABASE_TEST_URL: Optional[PostgresDsn] = None
+    
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: Optional[str], info: ValidationInfo) -> str:
+        """Validate and set default database URL for development."""
+        if v is None:
+            # Default development database URL
+            default_url = "postgresql://postgres:postgres@localhost:5432/procurement_db"
+            print(f"⚠️  DATABASE_URL not set, using default: {default_url}")
+            print("   Please create a .env file from .env.example for production use.")
+            return default_url
+        return v
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -48,6 +63,15 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+    
+    @field_validator("SECRET_KEY", mode="before")
+    @classmethod
+    def validate_secret_key(cls, v: Optional[str], info: ValidationInfo) -> str:
+        """Warn if using default secret key."""
+        if v == secrets.token_urlsafe(32):
+            print("⚠️  Using default SECRET_KEY - not suitable for production!")
+            print("   Please set SECRET_KEY in your .env file.")
+        return v
     
     # Object Storage (MinIO/S3)
     MINIO_ENDPOINT: str = "localhost:9000"
@@ -79,11 +103,15 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
+    # First Superuser (for initial setup)
+    FIRST_SUPERUSER: Optional[EmailStr] = None
+    FIRST_SUPERUSER_PASSWORD: Optional[str] = None
+    
     def get_database_url(self, test: bool = False) -> str:
         """Get database URL."""
         if test and self.DATABASE_TEST_URL:
             return str(self.DATABASE_TEST_URL)
-        return str(self.DATABASE_URL)
+        return str(self.DATABASE_URL) if self.DATABASE_URL else "postgresql://postgres:postgres@localhost:5432/procurement_db"
     
     @property
     def database_config(self) -> Dict[str, Any]:
@@ -95,6 +123,22 @@ class Settings(BaseSettings):
             "pool_timeout": 30,
             "pool_recycle": 3600,
         }
+    
+    def __init__(self, **values):
+        """Initialize settings with helpful error messages."""
+        try:
+            super().__init__(**values)
+        except Exception as e:
+            print("\n❌ Configuration Error!")
+            print("=" * 50)
+            print("Missing required environment variables.")
+            print("\nTo fix this:")
+            print("1. Copy the example environment file:")
+            print("   cp .env.example .env")
+            print("\n2. Edit .env and update the values")
+            print("\n3. Make sure you're in the backend directory")
+            print("=" * 50)
+            raise e
 
 
 settings = Settings()
