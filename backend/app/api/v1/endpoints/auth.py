@@ -15,26 +15,43 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import Token, TokenPayload
+from app.schemas.auth import Token, TokenPayload, UserCreate, UserResponse, UserUpdate, PasswordUpdate
 from app.schemas.user import UserResponse
+from app.services.auth import AuthService
 
 router = APIRouter()
 
+@router.post("/register", response_model=UserResponse)
+async def register(
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Register a new user.
+    """
+    auth_service = AuthService(db)
+    try:
+        user = await auth_service.register_user(user_data)
+        return user
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
 @router.post("/login", response_model=Token)
 async def login(
-    db: AsyncSession = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends()
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests.
     """
-    # Get user by email
-    result = await db.execute(
-        select(User).where(User.email == form_data.username)
+    auth_service = AuthService(db)
+    user = await auth_service.authenticate_user(
+        UserLogin(email=form_data.username, password=form_data.password)
     )
-    user = result.scalar_one_or_none()
-
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -45,14 +62,13 @@ async def login(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
-
-    # Create access and refresh tokens
-    access_token = create_access_token(user.id)
-    refresh_token = create_refresh_token(user.id)
-
+    
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth_service.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
         "token_type": "bearer"
     }
 
@@ -86,9 +102,57 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(
-    current_user: User = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user)
 ) -> Any:
     """
     Get current user.
     """
-    return current_user 
+    return current_user
+
+@router.put("/me", response_model=UserResponse)
+async def update_user_me(
+    user_data: UserUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Update current user.
+    """
+    auth_service = AuthService(db)
+    user = await auth_service.get_user_by_id(current_user.id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    for field, value in user_data.dict(exclude_unset=True).items():
+        setattr(user, field, value)
+    
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+@router.put("/me/password", response_model=UserResponse)
+async def update_password(
+    password_data: PasswordUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Update current user's password.
+    """
+    auth_service = AuthService(db)
+    success = await auth_service.update_user_password(
+        current_user.id,
+        password_data.current_password,
+        password_data.new_password
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password"
+        )
+    
+    user = await auth_service.get_user_by_id(current_user.id)
+    return user 

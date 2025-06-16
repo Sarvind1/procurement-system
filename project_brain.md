@@ -169,4 +169,231 @@ frontend/src/
 6. Seed Data (sample data for demo)
 
 ## Conclusion
-The Procurement Management System is designed with scalability, security, and performance in mind. By leveraging modern technologies and best practices, it provides a robust foundation for managing procurement processes efficiently. This document serves as a guide to understanding the development choices and future directions of the project. 
+The Procurement Management System is designed with scalability, security, and performance in mind. By leveraging modern technologies and best practices, it provides a robust foundation for managing procurement processes efficiently. This document serves as a guide to understanding the development choices and future directions of the project.
+
+# Procurement Management System - Project Documentation
+
+## Project Overview
+The Procurement Management System is a comprehensive solution designed to streamline and automate procurement processes. It provides features for managing products, suppliers, purchase orders, inventory, and shipments.
+
+## Architecture
+
+### Backend Architecture
+- **Framework**: FastAPI
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Authentication**: JWT-based authentication
+- **API Documentation**: OpenAPI (Swagger) and ReDoc
+- **Testing**: Pytest with async support
+- **Code Quality**: Black, isort, flake8, mypy
+
+### Frontend Architecture
+- **Framework**: React with TypeScript
+- **State Management**: Redux Toolkit
+- **UI Components**: Material-UI
+- **Form Handling**: React Hook Form with Yup validation
+- **API Client**: Axios with interceptors
+- **Testing**: Jest and React Testing Library
+
+## Database Schema
+
+### Core Entities
+1. **User**
+   - Authentication and authorization
+   - Role-based access control
+   - Profile management
+
+2. **Product**
+   - SKU management
+   - Category organization
+   - Price and unit tracking
+   - Status tracking (active, discontinued, etc.)
+
+3. **Supplier**
+   - Company information
+   - Contact details
+   - Address management
+   - Product associations
+   - Status tracking
+
+4. **Purchase Order**
+   - Order management
+   - Item tracking
+   - Approval workflow
+   - Status tracking
+   - Supplier association
+
+5. **Inventory**
+   - Stock management
+   - Location tracking
+   - Quantity tracking
+   - Adjustment history
+   - Count history
+
+6. **Shipment**
+   - Tracking management
+   - Document handling
+   - Status tracking
+   - Purchase order association
+
+## API Endpoints
+
+### Authentication
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - User login
+- `GET /api/v1/auth/me` - Get current user
+- `PUT /api/v1/auth/me` - Update current user
+- `PUT /api/v1/auth/me/password` - Update password
+
+### Products
+- `POST /api/v1/products` - Create product
+- `GET /api/v1/products` - List products
+- `GET /api/v1/products/{id}` - Get product
+- `GET /api/v1/products/sku/{sku}` - Get product by SKU
+- `PUT /api/v1/products/{id}` - Update product
+- `DELETE /api/v1/products/{id}` - Delete product
+
+### Suppliers
+- `POST /api/v1/suppliers` - Create supplier
+- `GET /api/v1/suppliers` - List suppliers
+- `GET /api/v1/suppliers/{id}` - Get supplier
+- `PUT /api/v1/suppliers/{id}` - Update supplier
+- `DELETE /api/v1/suppliers/{id}` - Delete supplier
+- `POST /api/v1/suppliers/{id}/contacts` - Add contact
+- `POST /api/v1/suppliers/{id}/addresses` - Add address
+- `POST /api/v1/suppliers/{id}/products` - Add product
+
+### Purchase Orders
+- `POST /api/v1/purchase-orders` - Create order
+- `GET /api/v1/purchase-orders` - List orders
+- `GET /api/v1/purchase-orders/{id}` - Get order
+- `PUT /api/v1/purchase-orders/{id}` - Update order
+- `DELETE /api/v1/purchase-orders/{id}` - Delete order
+- `POST /api/v1/purchase-orders/{id}/approve` - Approve order
+- `GET /api/v1/purchase-orders/{id}/approvals` - Get approvals
+
+### Inventory
+- `POST /api/v1/inventory` - Create inventory
+- `GET /api/v1/inventory` - List inventory
+- `GET /api/v1/inventory/{id}` - Get inventory
+- `PUT /api/v1/inventory/{id}` - Update inventory
+- `POST /api/v1/inventory/{id}/adjust` - Adjust inventory
+- `POST /api/v1/inventory/{id}/count` - Count inventory
+- `GET /api/v1/inventory/{id}/adjustments` - Get adjustments
+- `GET /api/v1/inventory/{id}/counts` - Get counts
+
+### Shipments
+- `POST /api/v1/shipments` - Create shipment
+- `GET /api/v1/shipments` - List shipments
+- `GET /api/v1/shipments/{id}` - Get shipment
+- `PUT /api/v1/shipments/{id}` - Update shipment
+- `PUT /api/v1/shipments/{id}/status` - Update status
+- `POST /api/v1/shipments/{id}/documents` - Add document
+- `GET /api/v1/shipments/{id}/documents` - Get documents
+
+## Services Implementation
+
+### Authentication Service
+- User registration and login
+- JWT token management
+- Password hashing and verification
+- User profile management
+- Account activation/deactivation
+
+### Product Service
+- Product CRUD operations
+- SKU management
+- Category filtering
+- Search functionality
+- Status management
+
+### Supplier Service
+- Supplier CRUD operations
+- Contact management
+- Address management
+- Product association
+- Status tracking
+
+### Purchase Order Service
+- Order CRUD operations
+- Item management
+- Approval workflow
+- Status tracking
+- Supplier integration
+
+### Inventory Service
+- Inventory CRUD operations
+- Stock adjustments
+- Physical counts
+- Location management
+- History tracking
+
+### Shipment Service
+- Shipment CRUD operations
+- Document management
+- Status tracking
+- Purchase order integration
+- Tracking number management
+
+## Security Features
+- JWT-based authentication
+- Password hashing with bcrypt
+- Role-based access control
+- Input validation
+- SQL injection prevention
+- XSS protection
+- CORS configuration
+- Rate limiting
+
+## Error Handling
+- Standardized error responses
+- Validation error handling
+- Database error handling
+- Authentication error handling
+- Business logic error handling
+
+## Testing Strategy
+- Unit tests for services
+- Integration tests for API endpoints
+- Database migration tests
+- Authentication tests
+- Business logic tests
+
+## Deployment
+- Docker containerization
+- Environment configuration
+- Database migration management
+- Logging configuration
+- Monitoring setup
+
+## Future Enhancements
+1. **Advanced Features**
+   - Automated reordering
+   - Supplier performance metrics
+   - Cost analysis
+   - Budget management
+   - Contract management
+
+2. **Integration**
+   - ERP system integration
+   - Accounting software integration
+   - E-commerce platform integration
+   - Shipping carrier integration
+
+3. **Reporting**
+   - Custom report generation
+   - Data visualization
+   - Export functionality
+   - Scheduled reports
+
+4. **Mobile Support**
+   - Mobile-responsive UI
+   - Mobile app development
+   - Push notifications
+   - Offline support
+
+5. **Analytics**
+   - Procurement analytics
+   - Cost optimization
+   - Supplier performance
+   - Inventory optimization
+   - Trend analysis 

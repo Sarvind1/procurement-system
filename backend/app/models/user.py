@@ -1,14 +1,15 @@
 from datetime import datetime
 from typing import List
 from uuid import UUID
+from enum import Enum
 
-from sqlalchemy import String, Boolean, Enum as SQLEnum
+from sqlalchemy import String, Boolean, Enum as SQLEnum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.core.security import get_password_hash
+from app.core.password import get_password_hash
 
-class UserRole(str, SQLEnum):
+class UserRole(str, Enum):
     ADMIN = "admin"
     PROCUREMENT_MANAGER = "procurement_manager"
     INVENTORY_MANAGER = "inventory_manager"

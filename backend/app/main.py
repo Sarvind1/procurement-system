@@ -11,6 +11,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from pydantic import ValidationError
 
 from app.api.v1.api import api_router
 from app.core.config import settings
@@ -41,10 +42,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_application() -> FastAPI:
     """Create and configure FastAPI application."""
     application = FastAPI(
-        title=settings.PROJECT_NAME,
-        description="Enterprise Procurement Management System API",
-        version=settings.VERSION,
-        openapi_url=f"{settings.API_V1_STR}/openapi.json",
+        title="Procurement Management System",
+        description="API for managing procurement processes",
+        version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -89,7 +89,14 @@ def create_application() -> FastAPI:
     async def validation_exception_handler(request, exc):
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors()},
+            content={"detail": str(exc)},
+        )
+
+    @application.exception_handler(ValidationError)
+    async def pydantic_validation_exception_handler(request, exc):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc)},
         )
 
     return application

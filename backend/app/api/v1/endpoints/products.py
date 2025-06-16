@@ -1,6 +1,6 @@
 """Product management endpoints."""
 
-from typing import Any, List
+from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -8,14 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.core.database import get_session
+from app.core.security import get_current_user
+from app.db.session import get_db
 from app.models.product import Product
+from app.schemas.auth import UserResponse
 from app.schemas.product import (
     ProductCreate,
     ProductUpdate,
     ProductResponse,
     ProductListResponse,
 )
-from app.services.product import product_service
+from app.services.product import product_service, ProductService
 
 router = APIRouter()
 
@@ -49,72 +52,73 @@ async def list_products(
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(
-    *,
-    session: AsyncSession = Depends(get_session),
-    product_in: ProductCreate,
-    current_user: dict = Depends(deps.get_current_user),
+    product_data: ProductCreate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
-    """Create new product."""
-    product = await product_service.create_product(
-        session=session, product_in=product_in
-    )
-    return ProductResponse.from_orm(product)
+    """
+    Create new product.
+    """
+    product_service = ProductService(db)
+    product = await product_service.create_product(product_data)
+    return product
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
-    *,
-    session: AsyncSession = Depends(get_session),
-    product_id: UUID,
+    product_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
-    """Get product by ID."""
-    product = await product_service.get_product(session=session, product_id=product_id)
+    """
+    Get product by ID.
+    """
+    product_service = ProductService(db)
+    product = await product_service.get_product(product_id)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found",
+            detail="Product not found"
         )
-    return ProductResponse.from_orm(product)
+    return product
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
 async def update_product(
-    *,
-    session: AsyncSession = Depends(get_session),
-    product_id: UUID,
-    product_in: ProductUpdate,
-    current_user: dict = Depends(deps.get_current_user),
+    product_id: int,
+    product_data: ProductUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> Any:
-    """Update product."""
-    product = await product_service.get_product(session=session, product_id=product_id)
+    """
+    Update product.
+    """
+    product_service = ProductService(db)
+    product = await product_service.update_product(product_id, product_data)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found",
+            detail="Product not found"
         )
-    
-    product = await product_service.update_product(
-        session=session, product=product, product_in=product_in
-    )
-    return ProductResponse.from_orm(product)
+    return product
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
-    *,
-    session: AsyncSession = Depends(get_session),
-    product_id: UUID,
-    current_user: dict = Depends(deps.get_current_user),
+    product_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ) -> None:
-    """Delete product (soft delete)."""
-    product = await product_service.get_product(session=session, product_id=product_id)
+    """
+    Delete product.
+    """
+    product_service = ProductService(db)
+    product = await product_service.delete_product(product_id)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found",
+            detail="Product not found"
         )
-    
-    await product_service.delete_product(session=session, product=product)
 
 
 @router.get("/search/", response_model=ProductListResponse)
@@ -152,3 +156,22 @@ async def bulk_create_products(
         session=session, products_in=products_in
     )
     return [ProductResponse.from_orm(product) for product in products]
+
+
+@router.get("/sku/{sku}", response_model=ProductResponse)
+async def get_product_by_sku(
+    sku: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Get product by SKU.
+    """
+    product_service = ProductService(db)
+    product = await product_service.get_product_by_sku(sku)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found"
+        )
+    return product

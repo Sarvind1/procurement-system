@@ -1,19 +1,37 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr
 
 class Token(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str
 
 class TokenPayload(BaseModel):
-    sub: Optional[str] = None
+    sub: Optional[int] = None
     exp: Optional[int] = None
-    type: Optional[str] = None
 
-class LoginRequest(BaseModel):
+class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: constr(min_length=8)
 
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str 
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: constr(min_length=8)
+    full_name: str
+    role: str = "user"
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: str
+    role: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: constr(min_length=8) 

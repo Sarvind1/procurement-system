@@ -26,7 +26,7 @@ COPY . .
 EXPOSE 3000
 
 # Start development server
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host"]
 
 # Build stage
 FROM node:18-alpine as build

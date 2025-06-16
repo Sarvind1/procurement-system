@@ -7,17 +7,10 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.user import User
+from app.core.password import verify_password, get_password_hash
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password: str) -> str:
-    """Generate password hash."""
-    return pwd_context.hash(password)
 
 def create_access_token(
     subject: Union[str, Any],
