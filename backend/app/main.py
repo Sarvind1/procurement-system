@@ -1,9 +1,11 @@
-"""FastAPI application main module."""
+"""FastAPI application main module with enhanced logging."""
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import time
+import uuid
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -68,7 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_application() -> FastAPI:
     """
-    Create and configure FastAPI application.
+    Create and configure FastAPI application with comprehensive logging.
     
     This function creates the FastAPI app instance and configures all
     middleware, routers, and exception handlers.
@@ -91,6 +93,72 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Add request/response logging middleware
+    @application.middleware("http")
+    async def log_requests(request: Request, call_next):
+        """
+        Log all incoming requests and outgoing responses.
+        """
+        # Generate request ID for tracking
+        request_id = str(uuid.uuid4())
+        
+        # Store request ID in request state for use in logs
+        request.state.request_id = request_id
+        
+        # Log request details
+        start_time = time.time()
+        
+        # Get request body for POST/PUT requests (be careful with large bodies)
+        request_body = None
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                request_body = await request.body()
+                # Create a new request with the same body
+                request._body = request_body
+            except Exception as e:
+                logger.error(f"Error reading request body: {e}")
+        
+        logger.info(
+            f"Incoming request - ID: {request_id} - "
+            f"Method: {request.method} - Path: {request.url.path} - "
+            f"Client: {request.client.host if request.client else 'Unknown'} - "
+            f"Headers: {dict(request.headers)}"
+        )
+        
+        if request_body and len(request_body) < 1000:  # Only log small bodies
+            logger.debug(f"Request body - ID: {request_id} - Body: {request_body.decode('utf-8', errors='ignore')}")
+        
+        # Process request
+        try:
+            response = await call_next(request)
+            
+            # Calculate response time
+            process_time = time.time() - start_time
+            
+            # Add custom headers
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = str(process_time)
+            
+            # Log response
+            logger.info(
+                f"Outgoing response - ID: {request_id} - "
+                f"Status: {response.status_code} - "
+                f"Time: {process_time:.3f}s - "
+                f"Path: {request.url.path}"
+            )
+            
+            return response
+            
+        except Exception as e:
+            process_time = time.time() - start_time
+            logger.error(
+                f"Request failed - ID: {request_id} - "
+                f"Error: {str(e)} - Time: {process_time:.3f}s - "
+                f"Path: {request.url.path}",
+                exc_info=True
+            )
+            raise
+
     # Add security middleware first
     if settings.ENVIRONMENT == "production":
         application.add_middleware(
@@ -103,16 +171,17 @@ def create_application() -> FastAPI:
     application.add_middleware(GZipMiddleware, minimum_size=1000)
     logger.debug("GZip compression middleware enabled")
     
-    # Add CORS middleware
+    # Add CORS middleware with detailed logging
     if settings.BACKEND_CORS_ORIGINS:
+        cors_origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
         application.add_middleware(
             CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+            allow_origins=cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        logger.info(f"CORS middleware enabled for origins: {settings.BACKEND_CORS_ORIGINS}")
+        logger.info(f"CORS middleware enabled for origins: {cors_origins}")
 
     # Include API routers
     application.include_router(api_router, prefix=settings.API_V1_STR)
@@ -127,11 +196,23 @@ def create_application() -> FastAPI:
         Returns:
             dict: Health status information
         """
+        try:
+            # Test database connection
+            from app.db.session import get_db
+            async for db in get_db():
+                await db.execute("SELECT 1")
+                db_status = "healthy"
+                break
+        except Exception as e:
+            db_status = f"unhealthy: {str(e)}"
+            logger.error(f"Database health check failed: {e}")
+        
         return {
-            "status": "healthy",
+            "status": "healthy" if db_status == "healthy" else "degraded",
             "service": "procurement-backend",
             "version": "1.0.0",
-            "environment": settings.ENVIRONMENT
+            "environment": settings.ENVIRONMENT,
+            "database": db_status
         }
 
     # Root endpoint
@@ -150,21 +231,16 @@ def create_application() -> FastAPI:
             "health": "/health"
         }
 
-    # Exception handlers
+    # Exception handlers with enhanced logging
     @application.exception_handler(StarletteHTTPException)
-    async def http_exception_handler(request, exc):
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         """
         Handle HTTP exceptions with structured logging.
-        
-        Args:
-            request: The HTTP request that caused the exception
-            exc: The HTTP exception that was raised
-            
-        Returns:
-            JSONResponse: Formatted error response
         """
+        request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
-            f"HTTP exception: {exc.status_code} - {exc.detail} - "
+            f"HTTP exception - ID: {request_id} - "
+            f"Status: {exc.status_code} - Detail: {exc.detail} - "
             f"Path: {request.url.path} - Method: {request.method}"
         )
         
@@ -172,6 +248,7 @@ def create_application() -> FastAPI:
             status_code=exc.status_code,
             content={
                 "error": True,
+                "request_id": request_id,
                 "status_code": exc.status_code,
                 "message": exc.detail,
                 "type": "http_exception"
@@ -179,19 +256,14 @@ def create_application() -> FastAPI:
         )
 
     @application.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request, exc):
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """
         Handle request validation errors with detailed information.
-        
-        Args:
-            request: The HTTP request that caused the exception
-            exc: The validation exception that was raised
-            
-        Returns:
-            JSONResponse: Formatted validation error response
         """
+        request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
-            f"Validation error: {exc} - "
+            f"Validation error - ID: {request_id} - "
+            f"Errors: {exc.errors()} - "
             f"Path: {request.url.path} - Method: {request.method}"
         )
         
@@ -199,6 +271,7 @@ def create_application() -> FastAPI:
             status_code=422,
             content={
                 "error": True,
+                "request_id": request_id,
                 "status_code": 422,
                 "message": "Validation error",
                 "type": "validation_error",
@@ -207,19 +280,14 @@ def create_application() -> FastAPI:
         )
 
     @application.exception_handler(ValidationError)
-    async def pydantic_validation_exception_handler(request, exc):
+    async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
         """
         Handle Pydantic validation errors.
-        
-        Args:
-            request: The HTTP request that caused the exception
-            exc: The Pydantic validation exception that was raised
-            
-        Returns:
-            JSONResponse: Formatted validation error response
         """
+        request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
-            f"Pydantic validation error: {exc} - "
+            f"Pydantic validation error - ID: {request_id} - "
+            f"Error: {str(exc)} - "
             f"Path: {request.url.path} - Method: {request.method}"
         )
         
@@ -227,6 +295,7 @@ def create_application() -> FastAPI:
             status_code=422,
             content={
                 "error": True,
+                "request_id": request_id,
                 "status_code": 422,
                 "message": "Data validation error",
                 "type": "pydantic_validation_error",
@@ -235,19 +304,14 @@ def create_application() -> FastAPI:
         )
 
     @application.exception_handler(Exception)
-    async def general_exception_handler(request, exc):
+    async def general_exception_handler(request: Request, exc: Exception):
         """
         Handle unexpected exceptions with secure error reporting.
-        
-        Args:
-            request: The HTTP request that caused the exception
-            exc: The exception that was raised
-            
-        Returns:
-            JSONResponse: Formatted error response
         """
+        request_id = getattr(request.state, "request_id", "unknown")
         logger.error(
-            f"Unexpected error: {exc} - "
+            f"Unexpected error - ID: {request_id} - "
+            f"Error: {str(exc)} - Type: {type(exc).__name__} - "
             f"Path: {request.url.path} - Method: {request.method}",
             exc_info=True
         )
@@ -264,6 +328,7 @@ def create_application() -> FastAPI:
             status_code=500,
             content={
                 "error": True,
+                "request_id": request_id,
                 "status_code": 500,
                 "message": message,
                 "type": "internal_server_error",
