@@ -6,14 +6,13 @@ services:
     image: postgres:15-alpine
     container_name: procurement-postgres
     environment:
-      POSTGRES_DB: procurement
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-procurement}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - procurement-network
     healthcheck:
@@ -44,8 +43,8 @@ services:
     container_name: procurement-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -66,16 +65,12 @@ services:
       dockerfile: Dockerfile
       target: development
     container_name: procurement-backend
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/procurement
-      - REDIS_URL=redis://redis:6379
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin123
-      - SECRET_KEY=your-secret-key-change-in-production
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=15
-      - ENVIRONMENT=development
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
     ports:
       - "8000:8000"
     volumes:
@@ -103,8 +98,8 @@ services:
       target: development
     container_name: procurement-frontend
     environment:
-      - VITE_API_URL=http://localhost:8000
-      - VITE_ENVIRONMENT=development
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+      - VITE_ENVIRONMENT=${VITE_ENVIRONMENT:-development}
     ports:
       - "5173:5173"
     volumes:
@@ -124,10 +119,11 @@ services:
       target: development
     container_name: procurement-celery-worker
     command: celery -A app.core.celery worker --loglevel=info
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/procurement
-      - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=your-secret-key-change-in-production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     volumes:
       - ./backend:/app
     depends_on:
@@ -147,10 +143,11 @@ services:
       target: development
     container_name: procurement-celery-beat
     command: celery -A app.core.celery beat --loglevel=info
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/procurement
-      - REDIS_URL=redis://redis:6379
-      - SECRET_KEY=your-secret-key-change-in-production
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     volumes:
       - ./backend:/app
     depends_on:
@@ -171,8 +168,8 @@ services:
     container_name: procurement-flower
     command: celery -A app.core.celery flower --port=5555
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/procurement
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     ports:
       - "5555:5555"
     depends_on:
