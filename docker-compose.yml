@@ -139,90 +139,93 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Celery Worker (for background tasks)
-  celery-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: procurement-celery-worker
-    command: celery -A app.core.celery worker --loglevel=info
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./backend:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - procurement-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # Celery services are temporarily disabled until properly configured
+  # Uncomment these when Celery is needed
 
-  # Celery Beat (for scheduled tasks)
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: procurement-celery-beat
-    command: celery -A app.core.celery beat --loglevel=info
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./backend:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - procurement-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # # Celery Worker (for background tasks)
+  # celery-worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: procurement-celery-worker
+  #   command: celery -A app.core.celery worker --loglevel=info
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+  #     - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+  #     - PYTHONUNBUFFERED=1
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - procurement-network
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
-  # Flower (Celery monitoring)
-  flower:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: development
-    container_name: procurement-flower
-    command: celery -A app.core.celery flower --port=5555
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - PYTHONUNBUFFERED=1
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-    networks:
-      - procurement-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # # Celery Beat (for scheduled tasks)
+  # celery-beat:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: procurement-celery-beat
+  #   command: celery -A app.core.celery beat --loglevel=info
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+  #     - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+  #     - PYTHONUNBUFFERED=1
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - procurement-network
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  # # Flower (Celery monitoring)
+  # flower:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: procurement-flower
+  #   command: celery -A app.core.celery flower --port=5555
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/procurement}
+  #     - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+  #     - PYTHONUNBUFFERED=1
+  #   ports:
+  #     - "5555:5555"
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - procurement-network
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
 volumes:
   postgres_data:
