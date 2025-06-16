@@ -7,14 +7,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
-
-
-class Base(DeclarativeBase):
-    """Base class for all database models."""
-    pass
 
 
 # Create async engine
@@ -55,11 +49,17 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def create_tables():
     """Create all database tables."""
+    # Import Base from models to ensure all models are registered
+    from app.models import Base
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def drop_tables():
     """Drop all database tables."""
+    # Import Base from models to ensure all models are registered
+    from app.models import Base
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
